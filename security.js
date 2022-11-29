@@ -9,7 +9,7 @@ const schema = yup.object().shape({
     password: yup.string().trim().required()
 });
 const updateSchema = yup.object().shape({
-    username: yup.string().trim().required(),
+    user: yup.string().trim().required(),
     password: yup.string().trim().required(),
     userID: yup.string().trim().required()
 });

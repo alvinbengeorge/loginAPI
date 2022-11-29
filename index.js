@@ -106,7 +106,7 @@ app.put("/update", async function (req, res) {
             });
             return 0;
         }
-        const token = req.header.token;
+        const token = req.headers.token;
         const userID = req.body.userID
         const password = req.body.password;
         const user = req.body.user;
