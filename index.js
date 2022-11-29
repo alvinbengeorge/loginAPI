@@ -16,6 +16,7 @@ async function connectMongo() {
 connectMongo();
 
 const db = client.db('loginAPI');
+const USERID_LENGTH = 10;
 
 app.get("/health", async function (req, res) {
     res.status(200).send(
@@ -34,19 +35,20 @@ app.post("/register", async function (req, res) {
             { "user": user }
         )
         if (isValidUser(user) && !found) {
+            const userID = nanoid(USERID_LENGTH)
             const hashedPassword = await hashPassword(password);
             const result = await db.collection('login').insertOne(
                 {
                     "user": user,
                     "password": hashedPassword,
-                    "userID": nanoid()
+                    "userID": userID
                 }
             );
             console.log("User Created ", user)
             res.status(200).send(
                 {
                     "message": "User created",
-                    "userID": result.userID
+                    "userID": userID
                 }
             );
         } else if (found) {
