@@ -110,13 +110,14 @@ app.put("/update", async function (req, res) {
         const userID = req.body.userID
         const password = req.body.password;
         const user = req.body.user;
+        const result = await db.collection('login').findOne({ "user": user })
 
-        if (!token) {
-            res.status(401).send(
-                { "message": "Invalid token" }
-            );
+        if (result) {
+            res.send({"message": "Existing User"})
+            return 0;
         }
-        else if (!verifyToken(token)) {
+
+        if (!token || !verifyToken(token)) {
             res.status(401).send(
                 { "message": "Invalid token" }
             );
@@ -128,7 +129,7 @@ app.put("/update", async function (req, res) {
         }
         else {
             const hashedPassword = await hashPassword(password);
-            const result = await db.collection('login').findOneAndUpdate(
+            await db.collection('login').findOneAndUpdate(
                 { "userID": userID }, {
                 $set: {
                     "user": user,
