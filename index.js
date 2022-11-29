@@ -1,152 +1,177 @@
 import express from 'express';
 import mongodb from 'mongodb';
 import dotenv from 'dotenv';
-import yup from 'yup';
 import { nanoid } from 'nanoid';
-import { isValidUser } from "./validityTesting.js";
-import { comparePassword, hashPassword } from "./hashing.js";
+import { comparePassword, hashPassword, isValidUser, generateToken, verifyToken, updateSchema, checkSchema } from "./security.js";
 
-// INITIALISE
-dotenv.config()
 const app = express();
-const mongoDB = process.env.MONGODB_URI;
-app.use(express.json());
-async function connect() {
-    const mongoClient = new mongodb.MongoClient(mongoDB, { useNewUrlParser: true, useUnifiedTopology: true });
-    await mongoClient.connect();
-    await mongoClient.db("loginAPI").command({ ping: 1 });
+app.use(express.json())
+dotenv.config()
+const client = new mongodb.MongoClient(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true });
+
+async function connectMongo() {
+    await client.connect();
     console.log("Connected to MongoDB");
 }
-connect()
-const schema = yup.object().shape({
-    user: yup.string().required(),
-    password: yup.string().required(),
-});
-let credentials = {}
+connectMongo();
 
+const db = client.db('loginAPI');
 
-// ROUTES
 app.get("/health", async function (req, res) {
-    res.send(
+    res.status(200).send(
         {
-            "status": "Online",
+            "status": "OK",
             "uptime": process.uptime()
         }
     );
 });
 
 app.post("/register", async function (req, res) {
-    schema.isValid(req.body).then(async function (valid) {
-        if (!valid) {
-            res.send({
-                "message": "Invalid schema, please check your request body.",
-                "status": "error",
-                "schema": schema.describe()
-            });
-        } else {
-            if (isValidUser(req.body.user)) {
-                if (credentials[req.body.user] == undefined) {
-                    credentials[req.body.user] = {
-                        "password": hashPassword(req.body.password),
-                        "id": nanoid(10)
-                    };
-                    res.send({
-                        "message": "User registered successfully.",
-                        "status": "success"
-                    });
-                } else {
-                    res.send({
-                        "message": "User already exists.",
-                        "status": "error"
-                    });
+    if (checkSchema(req, res)) {
+        const user = req.body.user;
+        const password = req.body.password;
+        const found = await db.collection('login').findOne(
+            {"user": user}
+        )
+        if (isValidUser(user) && !found) {
+            const hashedPassword = await hashPassword(password);
+            const result = await db.collection('login').insertOne(
+                {
+                    "user": user,
+                    "password": hashedPassword,
+                    "userID": nanoid()
                 }
-            } else {
-                res.send({
-                    "message": "Invalid email or phone number.",
-                    "status": "error"
-                });
-            }
-        }
-    });
-});
-
-app.delete("/delete", async function (req, res) {
-    schema.isValid(req.body).then(async function (valid) {
-        if (!valid) {
-            res.send({
-                "message": "Invalid schema, please check your request body.",
-                "status": "error",
-                "schema": schema.describe()
-            });
-        } else {
-            if (isValidUser(req.body.user)) {
-                if (credentials[req.body.user] != undefined) {
-                    if (comparePassword(req.body.password, credentials[req.body.user].password)) {                        
-                        delete credentials[req.body.user];
-                        res.send({
-                            "message": "User deleted",
-                            "status": "success"
-                        });
-                    } else {
-                        res.send({
-                            "message": "Incorrect password",
-                            "status": "error"
-                        });
-                    }
-                } else {
-                    res.send({
-                        "message": "User does not exist",
-                        "status": "error"
-                    });
+            );
+            console.log("User Created ", user)
+            res.status(200).send(
+                {
+                    "message": "User created",
+                    "userID": result.userID
                 }
-            } else {
-                res.send({
-                    "message": "Invalid email or phone number.",
-                    "status": "error"
-                });
-            }
+            );
+        } else if (found) {
+            res.status(400).send(
+                {"message": "User Already exists"}
+            )
+        } else {
+            res.status(400).send(
+                {"message": "Invalid user"}
+            );
         }
-    });
+    }
 });
 
 app.post("/login", async function (req, res) {
-    schema.isValid(req.body).then(async function (valid) {
-        if (!valid) {
-            res.send({
-                "message": "Invalid schema, please check your request body.",
-                "status": "error",
-                "schema": schema.describe()
-            });
-        } else {
-            if (isValidUser(req.body.user)) {
-                if (credentials[req.body.user] != undefined) {
-                    if (comparePassword(req.body.password, credentials[req.body.user].password)) {
-                        res.send({
+    if (checkSchema(req, res)) {
+        const user = req.body.user;
+        const password = req.body.password;
+        if (isValidUser(user)) {
+            const result = await db.collection('login').findOne(
+                {"user": user}
+            );
+            if (result) {
+                const passwordMatch = await comparePassword(password, result.password);
+                if (passwordMatch) {
+                    const token = generateToken(result.userID);
+                    res.status(200).send(
+                        {
                             "message": "Login successful",
-                            "status": "success",
-                            "id": credentials[req.body.user].id
-                        });
-                    } else {
-                        res.send({
-                            "message": "Incorrect password",
-                            "status": "error"
-                        });
-                    }
+                            "userID": result.userID,
+                            "token": token
+                        }
+                    );
                 } else {
-                    res.send({
-                        "message": "User does not exist",
-                        "status": "error"
-                    });
+                    res.status(401).send(
+                        {"message": "Invalid password"}
+                    );
                 }
             } else {
-                res.send({
-                    "message": "Invalid email or phone number.",
-                    "status": "error"
-                });
+                res.status(401).send(
+                    {"message": "Invalid user"}
+                );
             }
+        } else {
+            res.status(400).send(
+                {"message": "Invalid user"}
+            );
+        }
+    }
+});
+
+app.put("/update", async function (req, res) {
+    updateSchema.isValid(req.body).then(async function(valid) {
+        const token = req.header.token;
+        const userID = req.body.userID
+        const password = req.body.password;
+        const user = req.body.user;
+
+        if (!token) {
+            res.status(401).send(
+                {"message": "Invalid token"}
+            );
+        }
+        else if (!verifyToken(token)) {
+            res.status(401).send(
+                {"message": "Invalid token"}
+            );
+        }
+        else if (!isValidUser(user)) {
+            res.status(400).send(
+                {"message": "Invalid user"}
+            );
+        }
+        else {
+            const hashedPassword = await hashPassword(password);
+            const result = await db.collection('login').findOneAndUpdate(
+                {"userID": userID}, {
+                    $set: {
+                        "user": user,
+                        "password": hashedPassword
+                    }
+                }
+            );
+            res.send({"message": "Done, changed user and password"})
         }
     });
 });
 
-    
+
+app.delete("/delete", async function (req, res) {
+    if (checkSchema(req, res)) {
+        const user = req.body.user;
+        const password = req.body.password;
+        if (isValidUser(user)) {
+            const result = await db.collection('login').findOne(
+                {"user": user}
+            );
+            if (result) {
+                const passwordMatch = await comparePassword(password, result.password);
+                if (passwordMatch) {
+                    await db.collection('login').deleteOne(
+                        {"user": user}
+                    );
+                    res.status(200).send(
+                        {"message": "User deleted"}
+                    );
+                } else {
+                    res.status(401).send(
+                        {"message": "Invalid password"}
+                    );
+                }
+            } else {
+                res.status(401).send(
+                    {"message": "Invalid user"}
+                );
+            }
+        } else {
+            res.status(400).send(
+                {"message": "Invalid user"}
+            );
+        }
+    }
+});
+
+
+
+
 app.listen(8080, () => { console.log("Running"); })
