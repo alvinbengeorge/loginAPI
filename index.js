@@ -16,7 +16,7 @@ async function connectMongo() {
 connectMongo();
 
 const db = client.db('loginAPI');
-const USERID_LENGTH = 10;
+const USERID_LENGTH = 10; // change this as per your need
 
 app.get("/health", async function (req, res) {
     res.status(200).send(
@@ -37,7 +37,7 @@ app.post("/register", async function (req, res) {
         if (isValidUser(user) && !found) {
             const userID = nanoid(USERID_LENGTH)
             const hashedPassword = await hashPassword(password);
-            const result = await db.collection('login').insertOne(
+            await db.collection('login').insertOne(
                 {
                     "user": user,
                     "password": hashedPassword,
@@ -115,7 +115,7 @@ app.put("/update", async function (req, res) {
         const result = await db.collection('login').findOne({ "user": user })
 
         if (result) {
-            res.send({"message": "Existing User"})
+            res.send({ "message": "Existing User" })
             return 0;
         }
 
@@ -216,6 +216,4 @@ app.post("/refresh", async function (req, res) {
 });
 
 
-
-
-app.listen(8080, () => { console.log("Running"); })
+app.listen(process.env.PORT, () => { console.log("Running"); })
