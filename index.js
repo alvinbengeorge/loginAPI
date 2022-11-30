@@ -1,21 +1,16 @@
 import express from 'express';
-import mongodb from 'mongodb';
 import dotenv from 'dotenv';
 import { nanoid } from 'nanoid';
-import { comparePassword, hashPassword, isValidUser, generateToken, verifyToken, updateSchema, checkSchema } from "./security.js";
+import { updateSchema } from './utilities/schemas.js';
+import { comparePassword, hashPassword, isValidUser, generateToken, verifyToken, checkSchema } from "./utilities/security.js";
+import { connectDatabase, findByUser, findByUserID, insertUser, updateUser, removeUser, db } from './utilities/database.js';
 
 const app = express();
 app.use(express.json())
 dotenv.config()
-const client = new mongodb.MongoClient(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true });
 
-async function connectMongo() {
-    await client.connect();
-    console.log("Connected to MongoDB");
-}
-connectMongo();
+connectDatabase()
 
-const db = client.db('loginAPI');
 const USERID_LENGTH = 10; // change this as per your need
 
 app.get("/health", async function (req, res) {
@@ -31,19 +26,11 @@ app.post("/register", async function (req, res) {
     if (checkSchema(req, res)) {
         const user = req.body.user;
         const password = req.body.password;
-        const found = await db.collection('login').findOne(
-            { "user": user }
-        )
+        const found = await findByUser(user);
         if (isValidUser(user) && !found) {
             const userID = nanoid(USERID_LENGTH)
             const hashedPassword = await hashPassword(password);
-            await db.collection('login').insertOne(
-                {
-                    "user": user,
-                    "password": hashedPassword,
-                    "userID": userID
-                }
-            );
+            await insertUser(user, hashedPassword, userID)
             console.log("User Created ", user)
             res.status(200).send(
                 {
@@ -68,9 +55,7 @@ app.post("/login", async function (req, res) {
         const user = req.body.user;
         const password = req.body.password;
         if (isValidUser(user)) {
-            const result = await db.collection('login').findOne(
-                { "user": user }
-            );
+            const result = await findByUser(user)
             if (result) {
                 const passwordMatch = await comparePassword(password, result.password);
                 if (passwordMatch) {
@@ -112,7 +97,7 @@ app.put("/update", async function (req, res) {
         const userID = req.body.userID
         const password = req.body.password;
         const user = req.body.user;
-        const result = await db.collection('login').findOne({ "user": user })
+        const result = await findByUser(user);
 
         if (result) {
             res.send({ "message": "Existing User" })
@@ -131,14 +116,7 @@ app.put("/update", async function (req, res) {
         }
         else {
             const hashedPassword = await hashPassword(password);
-            await db.collection('login').findOneAndUpdate(
-                { "userID": userID }, {
-                $set: {
-                    "user": user,
-                    "password": hashedPassword
-                }
-            }
-            );
+            await updateUser(user, hashedPassword, userID);
             res.send({ "message": "Done, changed user and password" })
         }
     });
@@ -156,9 +134,7 @@ app.delete("/delete", async function (req, res) {
             if (result) {
                 const passwordMatch = await comparePassword(password, result.password);
                 if (passwordMatch) {
-                    await db.collection('login').deleteOne(
-                        { "user": user }
-                    );
+                    await removeUser(user);
                     res.status(200).send(
                         { "message": "User deleted" }
                     );
@@ -185,9 +161,7 @@ app.post("/refresh", async function (req, res) {
         const user = req.body.user;
         const password = req.body.password;
         if (isValidUser(user)) {
-            const result = await db.collection('login').findOne(
-                { "user": user }
-            );
+            const result = await findByUser(user);
             if (result) {
                 const passwordMatch = await comparePassword(password, result.password);
                 if (passwordMatch) {

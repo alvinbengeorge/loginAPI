@@ -1,18 +1,10 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import yup from 'yup';
+import { schema } from './schemas.js';
 
 const saltRounds = 10;
-const schema = yup.object().shape({
-    user: yup.string().trim().required(),
-    password: yup.string().trim().required()
-});
-const updateSchema = yup.object().shape({
-    user: yup.string().trim().required(),
-    password: yup.string().trim().required(),
-    userID: yup.string().trim().required()
-});
+
 
 dotenv.config()
 
@@ -29,11 +21,11 @@ function generateToken(userID) {
         "userID": userID,
         "timestamp": Date.now()
     }
-    return jwt.sign(data, process.env.SECRET, {expiresIn: '24h'});
+    return jwt.sign(data, process.env.SECRET, { expiresIn: '24h' });
 }
 
 async function checkSchema(req, res) {
-    schema.isValid(req.body).then(function(valid) {
+    schema.isValid(req.body).then(function (valid) {
         if (valid) {
             return true;
         } else {
@@ -49,7 +41,7 @@ async function checkSchema(req, res) {
 }
 
 function verifyToken(token) {
-    return jwt.verify(token, process.env.SECRET);    
+    return jwt.verify(token, process.env.SECRET);
 }
 
 function validateEmail(email) {
@@ -73,6 +65,5 @@ export {
     isValidUser,
     generateToken,
     verifyToken,
-    checkSchema,
-    updateSchema
+    checkSchema
 };
