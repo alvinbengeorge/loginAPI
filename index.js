@@ -99,7 +99,7 @@ app.put("/update", async function (req, res) {
         const user = req.body.user;
         const result = await findByUser(user);
 
-        if (result) {
+        if (result && result.userID !== userID) {
             res.send({ "message": "Existing User" })
             return 0;
         }
@@ -127,13 +127,12 @@ app.delete("/delete", async function (req, res) {
     if (checkSchema(req, res)) {
         const user = req.body.user;
         const password = req.body.password;
+        const token = req.headers.token;
         if (isValidUser(user)) {
-            const result = await db.collection('login').findOne(
-                { "user": user }
-            );
+            const result = await findByUser(user)
             if (result) {
                 const passwordMatch = await comparePassword(password, result.password);
-                if (passwordMatch) {
+                if (passwordMatch && verifyToken(token)) {
                     await removeUser(user);
                     res.status(200).send(
                         { "message": "User deleted" }

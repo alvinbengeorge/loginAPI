@@ -31,7 +31,7 @@ async function insertUser(user, password, userID) {
 }
 
 async function updateUser(user, password, userID) {
-    return await db.collection('login').findOneAndUpdate({ "userID": userID, $set: { "user": user, "password": password } });
+    return await db.collection('login').findOneAndUpdate({"userID": userID}, { $set: { "user": user, "password": password } });
 }
 
 async function remove(input) {
