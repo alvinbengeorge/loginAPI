@@ -1,9 +1,9 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import { schema } from './schemas.js';
+import { schema, updateSchema } from './schemas.js';
 
-const saltRounds = 10;
+const saltRounds = process.env.saltRounds;
 
 
 dotenv.config()
@@ -21,23 +21,26 @@ function generateToken(userID) {
         "userID": userID,
         "timestamp": Date.now()
     }
-    return jwt.sign(data, process.env.SECRET, { expiresIn: '24h' });
+    console.log(process.env.expiresIn)
+    return jwt.sign(data, process.env.SECRET, { expiresIn: process.env.expire });
 }
 
 async function checkSchema(req, res) {
-    schema.isValid(req.body).then(function (valid) {
-        if (valid) {
-            return true;
-        } else {
-            res.send(
-                {
-                    "message": "Invalid request body",
-                    "schema": schema.describe()
-                }
-            )
-            return false;
-        }
-    });
+    const valid = schema.isValid(req.body)
+    if (valid) {
+        return true
+    } else {
+        throw new Error("Invalid schema")
+    }
+}
+
+async function checkUpdateSchema(req, res) {
+    const valid = updateSchema.isValid(req.body)
+    if (valid) {
+        return true
+    } else {
+        throw new Error("Invalid schema")
+    }
 }
 
 function verifyToken(token) {
@@ -65,5 +68,6 @@ export {
     isValidUser,
     generateToken,
     verifyToken,
-    checkSchema
+    checkSchema,
+    checkUpdateSchema
 };

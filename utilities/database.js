@@ -10,16 +10,8 @@ async function connectDatabase() {
 }
 const db = client.db('loginAPI');
 
-async function find(input) {
-    return await db.collection('login').findOne(input);
-}
-
-async function findByUser(user) {
-    return await find({ "user": user }, db)
-}
-
-async function findByUserID(userID) {
-    return await find({ "userID": userID });
+async function find(user) {
+    return await db.collection('login').findOne({'user': user});
 }
 
 async function insert(input) {
@@ -46,8 +38,6 @@ async function removeUser(user) {
 export {
     connectDatabase,
     find,
-    findByUser,
-    findByUserID,
     insert,
     insertUser,
     updateUser,
