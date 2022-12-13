@@ -26,45 +26,41 @@ app.post("/register", async function (req, res) {
         const found = await find(user);
         if (!found) {
             const userID = nanoid(process.env.USERID_LENGTH)
-            const hashedPassword = hashPassword(password);
+            const hashedPassword = await hashPassword(password);
             await insertUser(user, hashedPassword, userID)
             console.log("User Created ", user)
             res.status(200).send({
-                    "message": "User created", userID
+                "message": "User created", userID
             });
         } else {
             res.status(400).send(
                 { "message": "User Already exists" }
             )
-        } 
+        }
     }
 });
 
 app.post("/login", async function (req, res) {
-    if (checkSchema(req, res)) {
+    try {
+        checkSchema(req, res)
         const user = req.body.user;
         const password = req.body.password;
         if (isValidUser(user)) {
             const result = await find(user)
             if (result) {
-                const passwordMatch = await comparePassword(password, result.password);
-                if (passwordMatch) {
-                    const token = generateToken(result.userID);
-                    res.status(200).send(
-                        {
-                            "message": "Login successful",
-                            "userID": result.userID,
-                            "token": token
-                        }
-                    );
-                } else {
-                    res.status(401).send(
-                        { "message": "Invalid password" }
-                    );
-                }
+                comparePassword(password, result.password);
+                const token = generateToken(result.userID);
+                res.status(200).send(
+                    {
+                        "message": "Login successful",
+                        "userID": result.userID,
+                        "token": token
+                    }
+                );
+                
             } else {
                 res.status(401).send(
-                    { "message": "Invalid user" }
+                    { "message": "User Not Found" }
                 );
             }
         } else {
@@ -72,6 +68,11 @@ app.post("/login", async function (req, res) {
                 { "message": "Invalid user" }
             );
         }
+    } catch (error) {
+        console.log(error)
+        res.status(500).send(
+            { "message": error }
+        );
     }
 });
 
@@ -94,7 +95,7 @@ app.put("/update", async function (req, res) {
                 { "message": "Invalid token" }
             );
         } else {
-            const hashedPassword = hashPassword(password);
+            const hashedPassword = await hashPassword(password);
             await updateUser(user, hashedPassword, userID);
             res.send({ "message": "Done, changed user and password" })
         }
@@ -108,7 +109,8 @@ app.put("/update", async function (req, res) {
 
 
 app.delete("/delete", async function (req, res) {
-    if (checkSchema(req, res)) {
+    try {
+        checkSchema(req, res)
         const user = req.body.user;
         const password = req.body.password;
         const token = req.headers.token;
@@ -123,7 +125,7 @@ app.delete("/delete", async function (req, res) {
                     );
                 } else {
                     res.status(401).send(
-                        { "message": "Invalid password" }
+                        { "message": "Token Error" }
                     );
                 }
             } else {
@@ -136,29 +138,26 @@ app.delete("/delete", async function (req, res) {
                 { "message": "Invalid user" }
             );
         }
+    } catch (error) {
+        res.status(500).send({
+            "message": error
+        })
     }
 });
 
 app.post("/refresh", async function (req, res) {
-    if (checkSchema(req, res)) {
+    try {
+        checkSchema(req, res);
         const user = req.body.user;
         const password = req.body.password;
         if (isValidUser(user)) {
             const result = await find(user);
             if (result) {
-                const passwordMatch = await comparePassword(password, result.password);
-                if (passwordMatch) {
-                    const token = generateToken(result.userID);
-                    res.status(200).send({
-                        "userID": result.userID,
+                comparePassword(password, result.password)
+                const token = generateToken(result.userID);
+                res.status(200).send({                        
                         "token": token
-                    }
-                    );
-                } else {
-                    res.status(401).send(
-                        { "message": "Invalid password" }
-                    );
-                }
+                });
             } else {
                 res.status(401).send(
                     { "message": "Invalid user" }
@@ -169,6 +168,10 @@ app.post("/refresh", async function (req, res) {
                 { "message": "Invalid user" }
             );
         }
+    } catch (error) {
+        res.status(500).send(
+            { "message": error }
+        );
     }
 });
 

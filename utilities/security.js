@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { schema, updateSchema } from './schemas.js';
 
-const saltRounds = process.env.saltRounds;
+const saltRounds = 10;
 
 
 dotenv.config()
@@ -13,7 +13,13 @@ function hashPassword(password) {
 }
 
 function comparePassword(password, hash) {
-    return bcrypt.compare(password, hash);
+    bcrypt.compare(password, hash).then(function (result) {
+        if (result) {
+            return true
+        } else {
+            throw new Error("Invalid password")
+        }
+    });
 }
 
 function generateToken(userID) {
@@ -21,26 +27,28 @@ function generateToken(userID) {
         "userID": userID,
         "timestamp": Date.now()
     }
-    console.log(process.env.expiresIn)
     return jwt.sign(data, process.env.SECRET, { expiresIn: process.env.expire });
 }
 
-async function checkSchema(req, res) {
-    const valid = schema.isValid(req.body)
-    if (valid) {
-        return true
-    } else {
-        throw new Error("Invalid schema")
-    }
+function checkSchema(req, res) {
+    schema.isValid(req.body).then(function (valid) {
+        if (valid) {
+            console.log(valid)
+            return true
+        } else {
+            throw new Error("Invalid schema")
+        }
+    });
 }
 
-async function checkUpdateSchema(req, res) {
-    const valid = updateSchema.isValid(req.body)
-    if (valid) {
-        return true
-    } else {
-        throw new Error("Invalid schema")
-    }
+function checkUpdateSchema(req, res) {
+    updateSchema.isValid(req.body).then(function (valid) {
+        if (valid) {
+            return true
+        } else {
+            throw new Error("Invalid schema")
+        }
+    });
 }
 
 function verifyToken(token) {
