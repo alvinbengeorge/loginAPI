@@ -24,6 +24,7 @@ npm install;
 npm start;
 
 # For developers
+npm install -D;
 npm test;
 ```
 
