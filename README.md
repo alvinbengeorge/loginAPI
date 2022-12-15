@@ -1,5 +1,7 @@
 # `🎈Login API`
 
+***This is just a checkpoint***
+
 ```js
 // This project was made for SRMKzilla assignment
 notableFeatures = {
