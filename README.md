@@ -4,7 +4,7 @@
 // This project was made for SRMKzilla assignment
 notableFeatures = {
   "Email and PhoneNumber Validity Check",
-  "JWT token with `24h` expiration",
+  "JWT token with expiration",
   "bcrypt Password Hashing",
   "Schema check with YUP`"
 }
@@ -22,6 +22,9 @@ npm install;
 
 # Start the project
 npm start;
+
+# For developers
+npm test;
 ```
 
 ## Endpoints
