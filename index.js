@@ -1,7 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { nanoid } from 'nanoid';
-import { comparePassword, hashPassword, isValidUser, generateToken, verifyToken, checkSchema, checkUpdateSchema } from "./utilities/security.js";
+import { comparePassword, hashPassword, generateToken, verifyToken, checkSchema, checkUpdateSchema } from "./utilities/security.js";
 import { connectDatabase, find, insertUser, updateUser, removeUser, db } from './utilities/database.js';
 
 const app = express();
@@ -20,7 +20,8 @@ app.get("/health", async function (req, res) {
 });
 
 app.post("/register", async function (req, res) {
-    if (checkSchema(req, res)) {
+    try {
+        await checkSchema(req, res);
         const user = req.body.user;
         const password = req.body.password;
         const found = await find(user);
@@ -37,48 +38,46 @@ app.post("/register", async function (req, res) {
                 { "message": "User Already exists" }
             )
         }
+    } catch (error) {
+        res.status(500).send(
+            { "message": error.message }
+        );
     }
 });
 
 app.post("/login", async function (req, res) {
     try {
-        checkSchema(req, res)
+        await checkSchema(req, res)
         const user = req.body.user;
         const password = req.body.password;
-        if (isValidUser(user)) {
-            const result = await find(user)
-            if (result) {
-                comparePassword(password, result.password);
-                const token = generateToken(result.userID);
-                res.status(200).send(
-                    {
-                        "message": "Login successful",
-                        "userID": result.userID,
-                        "token": token
-                    }
-                );
-                
-            } else {
-                res.status(401).send(
-                    { "message": "User Not Found" }
-                );
-            }
+        const result = await find(user)
+        if (result) {
+            await comparePassword(password, result.password);
+            const token = generateToken(result.userID);
+            res.status(200).send(
+                {
+                    "message": "Login successful",
+                    "userID": result.userID,
+                    "token": token
+                }
+            );
+
         } else {
-            res.status(400).send(
-                { "message": "Invalid user" }
+            res.status(401).send(
+                { "message": "User Not Found" }
             );
         }
     } catch (error) {
-        console.log(error)
+
         res.status(500).send(
-            { "message": error }
+            { "message": error.message }
         );
     }
 });
 
 app.put("/update", async function (req, res) {
     try {
-        checkUpdateSchema(req, res)
+        await checkUpdateSchema(req, res)
         const token = req.headers.token;
         const userID = req.body.userID
         const password = req.body.password;
@@ -100,9 +99,8 @@ app.put("/update", async function (req, res) {
             res.send({ "message": "Done, changed user and password" })
         }
     } catch (error) {
-        console.log(error)
         res.status(500).send(
-            { "message": error }
+            { "message": error.message }
         );
     }
 });
@@ -110,61 +108,49 @@ app.put("/update", async function (req, res) {
 
 app.delete("/delete", async function (req, res) {
     try {
-        checkSchema(req, res)
+        await checkSchema(req, res)
         const user = req.body.user;
         const password = req.body.password;
         const token = req.headers.token;
-        if (isValidUser(user)) {
-            const result = await find(user)
-            if (result) {
-                const passwordMatch = await comparePassword(password, result.password);
-                if (passwordMatch && verifyToken(token)) {
-                    await removeUser(user);
-                    res.status(200).send(
-                        { "message": "User deleted" }
-                    );
-                } else {
-                    res.status(401).send(
-                        { "message": "Token Error" }
-                    );
-                }
+        const result = await find(user)
+        if (result) {
+            await comparePassword(password, result.password);
+            if (verifyToken(token)) {
+                await removeUser(user);
+                res.status(200).send(
+                    { "message": "User deleted" }
+                );
             } else {
                 res.status(401).send(
-                    { "message": "Invalid user" }
+                    { "message": "Token Error" }
                 );
             }
         } else {
-            res.status(400).send(
-                { "message": "Invalid user" }
+            res.status(401).send(
+                { "message": "User Not Found" }
             );
         }
     } catch (error) {
         res.status(500).send({
-            "message": error
+            "message": error.message
         })
     }
 });
 
 app.post("/refresh", async function (req, res) {
     try {
-        checkSchema(req, res);
+        await checkSchema(req, res);
         const user = req.body.user;
         const password = req.body.password;
-        if (isValidUser(user)) {
-            const result = await find(user);
-            if (result) {
-                comparePassword(password, result.password)
-                const token = generateToken(result.userID);
-                res.status(200).send({                        
-                        "token": token
-                });
-            } else {
-                res.status(401).send(
-                    { "message": "Invalid user" }
-                );
-            }
+        const result = await find(user);
+        if (result) {
+            await comparePassword(password, result.password)
+            const token = generateToken(result.userID);
+            res.status(200).send({
+                "token": token
+            });
         } else {
-            res.status(400).send(
+            res.status(401).send(
                 { "message": "Invalid user" }
             );
         }

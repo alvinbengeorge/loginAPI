@@ -12,14 +12,14 @@ function hashPassword(password) {
     return bcrypt.hash(password, saltRounds);
 }
 
-function comparePassword(password, hash) {
-    bcrypt.compare(password, hash).then(function (result) {
-        if (result) {
-            return true
-        } else {
-            throw new Error("Invalid password")
-        }
-    });
+async function comparePassword(password, hash) {
+    const result = await bcrypt.compare(password, hash);
+    if (result) {
+        return true
+    } else {
+        throw new Error("Invalid Password")
+    }
+
 }
 
 function generateToken(userID) {
@@ -30,50 +30,32 @@ function generateToken(userID) {
     return jwt.sign(data, process.env.SECRET, { expiresIn: process.env.expire });
 }
 
-function checkSchema(req, res) {
-    schema.isValid(req.body).then(function (valid) {
-        if (valid) {
-            console.log(valid)
-            return true
-        } else {
-            throw new Error("Invalid schema")
-        }
-    });
+async function checkSchema(req, res) {
+    const valid = await schema.isValid(req.body)
+    if (valid) {
+        return true
+    } else {
+        throw new Error("Invalid schema")
+    }
 }
 
-function checkUpdateSchema(req, res) {
-    updateSchema.isValid(req.body).then(function (valid) {
-        if (valid) {
-            return true
-        } else {
-            throw new Error("Invalid schema")
-        }
-    });
+async function checkUpdateSchema(req, res) {
+    const valid = updateSchema.isValid(req.body);
+    if (valid) {
+        return true
+    } else {
+        throw new Error("Invalid schema")
+    }
 }
 
 function verifyToken(token) {
     return jwt.verify(token, process.env.SECRET);
 }
 
-function validateEmail(email) {
-    const re = /\S+@\S+\.\S+/;
-    return re.test(email);
-}
-
-
-function validatePhone(phone) {
-    const re = /^\d{10}$/;
-    return re.test(phone);
-}
-
-function isValidUser(user) {
-    return validateEmail(user) || validatePhone(user);
-}
 
 export {
     hashPassword,
     comparePassword,
-    isValidUser,
     generateToken,
     verifyToken,
     checkSchema,
