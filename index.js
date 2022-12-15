@@ -89,15 +89,11 @@ app.put("/update", async function (req, res) {
             return 0;
         }
 
-        if (!token || !verifyToken(token)) {
-            res.status(401).send(
-                { "message": "Invalid token" }
-            );
-        } else {
-            const hashedPassword = await hashPassword(password);
-            await updateUser(user, hashedPassword, userID);
-            res.send({ "message": "Done, changed user and password" })
-        }
+        verifyToken(token);
+        const hashedPassword = await hashPassword(password);
+        await updateUser(user, hashedPassword, userID);
+        res.send({ "message": "Done, changed user and password" })
+
     } catch (error) {
         res.status(500).send(
             { "message": error.message }

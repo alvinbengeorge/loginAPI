@@ -40,7 +40,7 @@ async function checkSchema(req, res) {
 }
 
 async function checkUpdateSchema(req, res) {
-    const valid = updateSchema.isValid(req.body);
+    const valid = await updateSchema.isValid(req.body);
     if (valid) {
         return true
     } else {
@@ -49,7 +49,13 @@ async function checkUpdateSchema(req, res) {
 }
 
 function verifyToken(token) {
-    return jwt.verify(token, process.env.SECRET);
+    if (!token) {
+        throw new Error("Token Missing")
+    }
+    const result = jwt.verify(token, process.env.SECRET);
+    if (!result) {
+        throw new Error("Invalid token")
+    }   
 }
 
 
