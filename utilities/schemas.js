@@ -1,11 +1,15 @@
 import yup from 'yup';
 
 const validateEmail = (email) => {
-    return yup.string().trim().required().email().isValid(email);
+    if (!email) return false;
+    if (yup.string().email().isValidSync(email)) {
+        return true;
+    }
+    return false;
 }
 
 const validatePhone = (phone) => {
-    return yup.string().trim().required().matches(/^\d{10}$/).isValid(phone);
+    return /^\d{10}$/.test(phone);
 }
 
 const validateUser = (user) => {
