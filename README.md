@@ -2,12 +2,12 @@
 
 ```js
 // This project was made for SRMKzilla assignment
-notableFeatures = {
+notableFeatures = [
   "Email and PhoneNumber Validity Check",
   "JWT token with expiration",
   "bcrypt Password Hashing",
   "Schema check with YUP`"
-}
+]
 ```
 
 ## Installation
